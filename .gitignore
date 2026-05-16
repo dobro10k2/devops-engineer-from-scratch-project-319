@@ -1,14 +1,33 @@
-# Terraform
-terraform/.terraform/
-terraform/terraform.tfstate
-terraform/terraform.tfstate.backup
-terraform/terraform.tfvars
+# Локальный кеш Terraform (НЕ включать в репозиторий)
+.terraform/
 
-# Local env
-*.log
-*.tmp
-*.swp
+# Файлы состояний (никогда не хранить в Git!)
+*.tfstate
+*.tfstate.*
 
-# OS files
-.DS_Store
-Thumbs.db
+# Логи и crash-файлы
+crash.log
+crash.*.log
+
+# Файлы с переменными, которые могут содержать секреты
+*.tfvars
+*.tfvars.json
+
+# Переопределения провайдеров (обычно для разработки)
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI конфигурация (может содержать credentials)
+.terraformrc
+terraform.rc
+
+# Резервные файлы
+*.backup
+*.bak
+*~
+
+# Результаты команд
+terraform.tfplan
+plan.out
