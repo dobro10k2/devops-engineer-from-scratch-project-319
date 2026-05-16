@@ -1,0 +1,14 @@
+# Terraform
+terraform/.terraform/
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/terraform.tfvars
+
+# Local env
+*.log
+*.tmp
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db

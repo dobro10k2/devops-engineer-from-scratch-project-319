@@ -1,0 +1,15 @@
+#cloud-config
+
+package_update: true
+package_upgrade: true
+
+packages:
+  - curl
+  - git
+
+runcmd:
+  # Установка k3s сервера с фиксированным токеном
+  - curl -sfL https://get.k3s.io | K3S_TOKEN="${k3s_token}" sh -
+  - mkdir -p /home/ubuntu/.kube
+  - cp /etc/rancher/k3s/k3s.yaml /home/ubuntu/.kube/config
+  - chown -R ubuntu:ubuntu /home/ubuntu/.kube
