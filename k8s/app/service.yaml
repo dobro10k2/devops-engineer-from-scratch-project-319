@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: bulletin-app
+  namespace: bulletin-board
+spec:
+  type: ClusterIP
+  selector:
+    app: bulletin-app
+  ports:
+  - port: 80
+    targetPort: 8080
+    name: http
+  - port: 9090          # ← Добавить для метрик
+    targetPort: 9090
+    name: metrics
