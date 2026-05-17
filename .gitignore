@@ -12,7 +12,7 @@ crash.*.log
 # Файлы с переменными, которые могут содержать секреты
 *.tfvars
 *.tfvars.json
-secret.yaml
+# secret.yaml
 
 # Переопределения провайдеров (обычно для разработки)
 override.tf
