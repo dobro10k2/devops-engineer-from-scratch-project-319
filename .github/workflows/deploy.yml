@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest # Выделяем бесплатный сервер от GitHub
 
     steps:
-      # 1. Скачиваем твой код из репозитория на сервер GitHub
+      # 1. Скачиваем код из репозитория на сервер GitHub
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -25,12 +25,18 @@ jobs:
           echo "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > ~/.kube/config
           chmod 600 ~/.kube/config
 
+      # Создаем директорию (на случай, если git ее не создал) и декодируем секрет
+      - name: Generate K8s Secret file
+        run: |
+          mkdir -p k8s
+          echo "${{ secrets.K8S_SECRET_YAML }}" | base64 --decode > k8s/secret.yaml
+
       # 4. Деплой! Подменяем переменные и отправляем манифесты в кластер
       - name: Apply K8s Manifests
         env:
           APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
         run: |
-          # Сначала разворачиваем БД и конфиги (как в твоем Makefile)
+          # Сначала разворачиваем БД и конфиги (как в Makefile)
           kubectl apply -f k8s/namespace.yaml
           kubectl apply -f k8s/configmap.yaml
           kubectl apply -f k8s/secret.yaml
