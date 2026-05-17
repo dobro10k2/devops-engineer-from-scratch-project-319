@@ -1,0 +1,33 @@
+app:
+  replicaCount: 3
+  image:
+    repository: ghcr.io/dobro10k2/project-devops-deploy
+    tag: latest
+    pullPolicy: Always
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+    requests:
+      cpu: "250m"
+      memory: "256Mi"
+
+postgres:
+  image: postgres:15
+  storageSize: 2Gi
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+    requests:
+      cpu: "250m"
+      memory: "256Mi"
+
+ingress:
+  host: "example.com" # Будет переопределено в CI/CD
+
+secrets:
+  dbPassword: ""
+  awsAccessKeyId: ""
+  awsSecretAccessKey: ""
+  appSecret: ""

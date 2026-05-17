@@ -2,7 +2,6 @@ apiVersion: autoscaling/v1
 kind: HorizontalPodAutoscaler
 metadata:
   name: bulletin-app-hpa
-  namespace: bulletin-board
 spec:
   scaleTargetRef:
     apiVersion: apps/v1

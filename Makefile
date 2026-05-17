@@ -1,3 +1,6 @@
+# ==========================================
+# TERRAFORM
+# ==========================================
 tf-init:
 	cd terraform && terraform init
 
@@ -14,7 +17,9 @@ tf-destroy:
 tf-outputs:
 	cd terraform && terraform output
 
-# Kubernetes
+# ==========================================
+# KUBERNETES & HELM
+# ==========================================
 KUBECTL = kubectl -n bulletin-board
 MASTER_IP = $(shell cd terraform && terraform output -raw master_public_ip 2>/dev/null || echo "localhost")
 
@@ -25,33 +30,27 @@ k8s-get-config:
 	sed -i.bak 's/127.0.0.1/$(MASTER_IP)/g' ~/.kube/config-k3s
 	@echo "✅ Готово! Используйте: export KUBECONFIG=~/.kube/config-k3s"
 
-# Первичный деплой
-k8s-deploy:
+# Создание namespace (если еще нет)
+k8s-namespace:
 	kubectl apply -f k8s/namespace.yaml
-	kubectl apply -f k8s/configmap.yaml
-	kubectl apply -f k8s/secret.yaml
-	kubectl apply -f k8s/postgres/
-	kubectl apply -f k8s/app/
 
-# Step 4: Масштабирование и балансировка
-k8s-scale:
-	kubectl apply -f k8s/pdb.yaml
-	kubectl apply -f k8s/hpa.yaml
-	kubectl apply -f k8s/ingress.yaml
-	@echo "✅ PDB, HPA и Ingress применены"
+# Деплой через Helm (локально, использует значения из values.yaml по умолчанию)
+helm-deploy: k8s-namespace
+	helm upgrade --install bulletin-board ./k8s/bulletin-board \
+	  --namespace bulletin-board
 
-# Полный деплой (все включено)
-k8s-deploy-full: k8s-deploy k8s-scale
+# Откат релиза на предыдущую версию
+helm-rollback:
+	helm rollback bulletin-board 0 --namespace bulletin-board
 
-# Удаление
-k8s-clean:
-	kubectl delete -f k8s/app/ || true
-	kubectl delete -f k8s/postgres/ || true
-	kubectl delete -f k8s/secret.yaml || true
-	kubectl delete -f k8s/configmap.yaml || true
-	kubectl delete -f k8s/namespace.yaml || true
+# Полное удаление приложения
+helm-clean:
+	helm uninstall bulletin-board --namespace bulletin-board || true
 
-# Мониторинг
+# ==========================================
+# KUBERNETES UTILS (DEBUG & CHECK)
+# ==========================================
+# Статус ресурсов
 k8s-status:
 	$(KUBECTL) get pods,svc,ingress,hpa,pdb -o wide
 
@@ -63,15 +62,6 @@ k8s-nodes:
 k8s-pod-distribution:
 	kubectl get pods -n bulletin-board -o wide --sort-by=.spec.nodeName
 
-# Rolling update (тестовый деплой новой версии)
-k8s-update:
-	kubectl set image deployment/bulletin-app bulletin-app=ghcr.io/dobro10k2/project-devops-deploy:v2 -n bulletin-board
-	kubectl rollout status deployment/bulletin-app -n bulletin-board
-
-# Откат
-k8s-rollback:
-	kubectl rollout undo deployment/bulletin-app -n bulletin-board
-
 # Порт форвард
 k8s-port-forward:
 	@echo "Приложение будет доступно на http://localhost:8080"
@@ -81,6 +71,9 @@ k8s-port-forward:
 k8s-logs:
 	$(KUBECTL) logs -f deployment/bulletin-app --all-containers=true
 
+# ==========================================
+# OBSERVABILITY (STEP 5)
+# ==========================================
 k8s-deploy-monitoring:
 	envsubst < k8s/monitoring/prometheus-agent.yaml | kubectl apply -f -
 

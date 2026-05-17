@@ -3,67 +3,44 @@ name: Deploy to Yandex Cloud K8s
 on:
   push:
     branches:
-      - main # Пайплайн запустится только при пуше в ветку main
+      - main
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest # Выделяем бесплатный сервер от GitHub
+    runs-on: ubuntu-latest
 
     steps:
-      # 1. Скачиваем код из репозитория на сервер GitHub
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 2. Устанавливаем kubectl
       - name: Set up kubectl
         uses: azure/setup-kubectl@v3
 
-      # 3. Распаковываем kubeconfig из секретов, чтобы kubectl понял, куда подключаться
       - name: Configure Kubernetes Access
         run: |
           mkdir -p ~/.kube
           echo "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > ~/.kube/config
           chmod 600 ~/.kube/config
 
-      # Создаем директорию (на случай, если git ее не создал) и декодируем секрет
-      - name: Generate K8s Secret file
-        run: |
-          mkdir -p k8s
-          echo "${{ secrets.K8S_SECRET_YAML }}" | base64 --decode > k8s/secret.yaml
+      - name: Create Namespace
+        run: kubectl apply -f k8s/namespace.yaml
 
-      # 4. Деплой! Подменяем переменные и отправляем манифесты в кластер
-      - name: Apply K8s Manifests
-        env:
-          APP_DOMAIN: ${{ secrets.APP_DOMAIN }}
+      - name: Deploy Application with Helm
         run: |
-          # Сначала разворачиваем БД и конфиги (как в Makefile)
-          kubectl apply -f k8s/namespace.yaml
-          kubectl apply -f k8s/configmap.yaml
-          kubectl apply -f k8s/secret.yaml
-          kubectl apply -f k8s/postgres/
-          
-          # Подменяем переменную ${APP_DOMAIN} в ingress.yaml и сразу применяем его
-          envsubst < k8s/app/ingress.yaml | kubectl apply -f -
-          
-          # Применяем остальные файлы приложения (Deployment, Service, HPA, PDB)
-          kubectl apply -f k8s/app/deployment.yaml
-          kubectl apply -f k8s/app/service.yaml
-          kubectl apply -f k8s/app/hpa.yaml
-          kubectl apply -f k8s/app/pdb.yaml
+          helm upgrade --install bulletin-board ./k8s/bulletin-board \
+            --namespace bulletin-board \
+            --set ingress.host="${{ secrets.APP_DOMAIN }}" \
+            --set secrets.dbPassword="${{ secrets.DB_PASSWORD }}" \
+            --set secrets.awsAccessKeyId="${{ secrets.AWS_ACCESS_KEY_ID }}" \
+            --set secrets.awsSecretAccessKey="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
+            --set secrets.appSecret="${{ secrets.APP_SECRET }}" \
+            --wait
 
-      # 5. Ждем, пока новые поды успешно поднимутся (проверка Zero-Downtime)
-      - name: Verify Deployment
-        run: |
-          kubectl -n bulletin-board rollout status deployment/bulletin-app
-
-      # 6. Деплой Обсервабилити (Метрики и Логи для Шага 5)
       - name: Deploy Observability (Prometheus & Fluent Bit)
         env:
-          FOLDER_ID: ${{ secrets.FOLDER_ID }}
           WORKSPACE_ID: ${{ secrets.WORKSPACE_ID }}
           OBSERVABILITY_API_KEY: ${{ secrets.OBSERVABILITY_API_KEY }}
           LOG_GROUP_ID: ${{ secrets.LOG_GROUP_ID }}
         run: |
-          # В ubuntu-latest уже установлены make и helm, поэтому просто вызываем команды из твоего Makefile
           make k8s-deploy-monitoring
           make k8s-install-logging

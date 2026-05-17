@@ -1,0 +1,6 @@
+apiVersion: v2
+name: bulletin-board
+description: A Helm chart for the Bulletin Board Spring Boot Application
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
