@@ -10,7 +10,7 @@ data:
     
     # Отправка метрик в Managed Prometheus Yandex Cloud
     remote_write:
-      - url: "https://monitoring.api.cloud.yandex.net/prometheus/workspaces/${FOLDER_ID}/api/v1/write"
+      - url: "https://monitoring.api.cloud.yandex.net/prometheus/workspaces/${WORKSPACE_ID}/api/v1/write"
         bearer_token: "${OBSERVABILITY_API_KEY}"
 
     scrape_configs:

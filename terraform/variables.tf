@@ -24,3 +24,7 @@ variable "bucket_name" {
   type    = string
   default = "bulletin-board-storage"
 }
+
+variable "prometheus_workspace_id" {
+  type        = string
+}

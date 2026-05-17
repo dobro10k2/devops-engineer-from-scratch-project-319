@@ -33,3 +33,24 @@ output "observability_api_key" {
   value     = yandex_iam_service_account_api_key.observability_key.secret_key
   sensitive = true
 }
+
+# Managed Prometheus endpoints
+output "prometheus_remote_write_url" {
+  value       = "https://monitoring.api.cloud.yandex.net/prometheus/workspaces/${var.prometheus_workspace_id}/api/v1/write"
+  description = "Remote Write URL для Prometheus Agent"
+}
+
+output "prometheus_remote_read_url" {
+  value       = "https://monitoring.api.cloud.yandex.net/prometheus/workspaces/${var.prometheus_workspace_id}/api/v1/read"
+  description = "Remote Read URL для Prometheus"
+}
+
+output "prometheus_query_url" {
+  value       = "https://monitoring.api.cloud.yandex.net/prometheus/workspaces/${var.prometheus_workspace_id}/api/v1/query"
+  description = "Query URL для Grafana datasource"
+}
+
+output "prometheus_console_url" {
+  value       = "https://console.cloud.yandex.ru/folders/${var.folder_id}/monitoring/prometheus"
+  description = "Yandex Managed Prometheus Console"
+}
