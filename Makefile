@@ -87,6 +87,6 @@ k8s-deploy-monitoring:
 k8s-install-logging:
 	helm upgrade --install fluent-bit oci://cr.yandex/yc-marketplace/yandex-cloud/fluent-bit/fluent-bit \
 	  --namespace kube-system \
-	  --version 0.2.0 \
+	  --version 4.2.3-1 \
 	  --set auth.apiKey=$(OBSERVABILITY_API_KEY) \
 	  --set loggingGroupId=$(LOG_GROUP_ID)
