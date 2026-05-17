@@ -55,3 +55,14 @@ jobs:
       - name: Verify Deployment
         run: |
           kubectl -n bulletin-board rollout status deployment/bulletin-app
+
+      # 6. Деплой Обсервабилити (Метрики и Логи для Шага 5)
+      - name: Deploy Observability (Prometheus & Fluent Bit)
+        env:
+          FOLDER_ID: ${{ secrets.FOLDER_ID }}
+          OBSERVABILITY_API_KEY: ${{ secrets.OBSERVABILITY_API_KEY }}
+          LOG_GROUP_ID: ${{ secrets.LOG_GROUP_ID }}
+        run: |
+          # В ubuntu-latest уже установлены make и helm, поэтому просто вызываем команды из твоего Makefile
+          make k8s-deploy-monitoring
+          make k8s-install-logging

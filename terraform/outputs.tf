@@ -24,3 +24,12 @@ output "s3_secret_key" {
 output "lockbox_secret_id" {
   value = yandex_lockbox_secret.app.id
 }
+
+output "log_group_id" {
+  value = yandex_logging_group.k8s_logs.id
+}
+
+output "observability_api_key" {
+  value     = yandex_iam_service_account_api_key.observability_key.secret_key
+  sensitive = true
+}

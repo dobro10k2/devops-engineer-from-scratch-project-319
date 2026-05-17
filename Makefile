@@ -80,3 +80,16 @@ k8s-port-forward:
 # Логи
 k8s-logs:
 	$(KUBECTL) logs -f deployment/bulletin-app --all-containers=true
+
+# Деплой агента метрик
+k8s-deploy-monitoring:
+	envsubst < k8s/monitoring/prometheus-agent.yaml | kubectl apply -f -
+
+# Установка сборщика логов в Cloud Logging (Fluent Bit)
+k8s-install-logging:
+	helm repo add yandex https://yandex-cloud.github.io/helm-charts/
+	helm repo update
+	helm upgrade --install fluent-bit yandex/fluent-bit \
+	  --namespace kube-system \
+	  --set auth.apiKey=$(OBSERVABILITY_API_KEY) \
+	  --set loggingGroupId=$(LOG_GROUP_ID)
