@@ -4,12 +4,12 @@ metadata:
   name: bulletin-app
   namespace: bulletin-board
 spec:
-  replicas: 2
+  replicas: 3  # ← Увеличено для распределения по нодам
   strategy:
     type: RollingUpdate
     rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 0
+      maxSurge: 1        # Создать 1 новый под перед удалением старого
+      maxUnavailable: 0  # Никогда не удалять под пока новый не готов
   selector:
     matchLabels:
       app: bulletin-app
@@ -18,47 +18,78 @@ spec:
       labels:
         app: bulletin-app
     spec:
+      # Равномерное распределение подов по нодам
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - bulletin-app
+              topologyKey: kubernetes.io/hostname
+
       containers:
       - name: bulletin-app
         image: ghcr.io/dobro10k2/project-devops-deploy:latest
+        imagePullPolicy: Always  # ← Всегда проверять новые версии
         ports:
         - containerPort: 8080
           name: http
         - containerPort: 9090
           name: metrics
 
+        # Probes для zero-downtime deployments
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 9090
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 9090
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+
+        # Graceful shutdown
+        lifecycle:
+          preStop:
+            exec:
+              command: ["/bin/sh", "-c", "sleep 15"]
+
         envFrom:
         - configMapRef:
             name: app-config
-        
+
         env:
-        # PostgreSQL пароль
         - name: SPRING_DATASOURCE_PASSWORD
           valueFrom:
             secretKeyRef:
               name: app-secret
               key: DB_PASSWORD
-        
-        # Для совместимости
-        - name: DB_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: app-secret
-              key: DB_PASSWORD
-        
+
         - name: APP_SECRET
           valueFrom:
             secretKeyRef:
               name: app-secret
               key: APP_SECRET
-        
-        # S3 / AWS
+
         - name: STORAGE_S3_ACCESSKEY
           valueFrom:
             secretKeyRef:
               name: app-secret
               key: AWS_ACCESS_KEY_ID
-              
+
         - name: STORAGE_S3_SECRETKEY
           valueFrom:
             secretKeyRef:
@@ -67,8 +98,8 @@ spec:
 
         resources:
           limits:
-            cpu: "400m"
-            memory: "300Mi"
+            cpu: "500m"
+            memory: "512Mi"
           requests:
-            cpu: "200m"
-            memory: "150Mi"
+            cpu: "250m"     # ← Для HPA
+            memory: "256Mi"

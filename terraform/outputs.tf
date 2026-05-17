@@ -2,8 +2,9 @@ output "master_public_ip" {
   value = yandex_compute_instance.master.network_interface[0].nat_ip_address
 }
 
-output "worker_public_ip" {
-  value = yandex_compute_instance.worker.network_interface[0].nat_ip_address
+# Изменено: теперь выводит список IP-адресов всех воркеров
+output "worker_private_ips" {
+  value = yandex_compute_instance.worker[*].network_interface[0].ip_address
 }
 
 output "bucket_name" {

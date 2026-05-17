@@ -1,9 +1,7 @@
-# Динамический поиск актуального ID образа Ubuntu 22.04 LTS
 data "yandex_compute_image" "ubuntu" {
   family = "ubuntu-2204-lts"
 }
 
-# Генерация безопасного токена для связи компонентов K3s кластера
 resource "random_password" "k3s_token" {
   length  = 32
   special = false
@@ -14,8 +12,8 @@ resource "yandex_compute_instance" "master" {
   platform_id = "standard-v3"
 
   resources {
-    cores  = 2
-    memory = 2
+    cores         = 2
+    memory        = 2
     core_fraction = 20
   }
 
@@ -29,7 +27,7 @@ resource "yandex_compute_instance" "master" {
 
   network_interface {
     subnet_id          = yandex_vpc_subnet.main.id
-    nat                = true # Мастеру нужен внешний IP для доступа к API и SSH
+    nat                = true
     security_group_ids = [yandex_vpc_security_group.k8s.id]
   }
 
@@ -42,12 +40,13 @@ resource "yandex_compute_instance" "master" {
 }
 
 resource "yandex_compute_instance" "worker" {
-  name        = "k3s-worker-1"
+  count       = 2 # Создаем 2 рабочие ноды
+  name        = "k3s-worker-${count.index + 1}"
   platform_id = "standard-v3"
 
   resources {
-    cores  = 2
-    memory = 2
+    cores         = 2
+    memory        = 2
     core_fraction = 20
   }
 
@@ -61,14 +60,14 @@ resource "yandex_compute_instance" "worker" {
 
   network_interface {
     subnet_id          = yandex_vpc_subnet.main.id
-    nat                = false # Безопасный приватный воркер, ходит в сеть через NAT-gateway
+    nat                = false # Белые IP не нужны, доступ через NAT-шлюз
     security_group_ids = [yandex_vpc_security_group.k8s.id]
   }
 
   metadata = {
     ssh-keys  = "ubuntu:${var.ssh_public_key}"
     user-data = templatefile("${path.module}/cloud-init/worker.yaml", {
-      k3s_token     = random_password.k3s_token.result
+      k3s_token      = random_password.k3s_token.result
       master_priv_ip = yandex_compute_instance.master.network_interface[0].ip_address
     })
   }

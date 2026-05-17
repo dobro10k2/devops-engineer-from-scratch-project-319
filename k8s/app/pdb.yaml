@@ -1,0 +1,10 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: bulletin-app-pdb
+  namespace: bulletin-board
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: bulletin-app

@@ -1,0 +1,13 @@
+apiVersion: autoscaling/v1
+kind: HorizontalPodAutoscaler
+metadata:
+  name: bulletin-app-hpa
+  namespace: bulletin-board
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: bulletin-app
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
