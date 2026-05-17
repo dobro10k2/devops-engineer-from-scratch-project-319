@@ -17,7 +17,7 @@ data:
       - job_name: 'spring-boot-app'
         metrics_path: '/actuator/prometheus'
         static_configs:
-          # Собираем метрики с сервиса по порту 9090
+          # Собираем метрики с сервиса по выделенному порту 9090
           - targets: ['bulletin-app.bulletin-board.svc.cluster.local:9090']
             labels:
               application: 'bulletin-board'
@@ -42,7 +42,7 @@ spec:
           image: prom/prometheus:v2.45.0
           args:
             - "--config.file=/etc/prometheus/prometheus.yml"
-            - "--enable-feature=agent" # Режим агента (экономит ресурсы)
+            - "--enable-feature=agent" # Режим агента (экономит память кластера)
           volumeMounts:
             - name: config-volume
               mountPath: /etc/prometheus
