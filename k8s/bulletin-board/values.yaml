@@ -25,3 +25,5 @@ postgres:
 
 ingress:
   host: "" # Переопределяется в CI/CD через --set ingress.host
+
+lockboxSecretId: ""

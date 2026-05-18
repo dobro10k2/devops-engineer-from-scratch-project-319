@@ -37,49 +37,18 @@ jobs:
             --dry-run=client -o yaml | kubectl apply -f -
           rm authorized-key.json
 
+      # Легкая страховка: ждем регистрации CRD
       - name: Wait for ESO CRDs to be established
         run: |
           kubectl wait --for=condition=established --timeout=60s crd/externalsecrets.external-secrets.io
           kubectl wait --for=condition=established --timeout=60s crd/secretstores.external-secrets.io
 
-      - name: Deploy External Secrets Resources
-        env:
-          LOCKBOX_SECRET_ID: ${{ secrets.LOCKBOX_SECRET_ID }}
-        run: |
-          # Флаг успешного выполнения
-          SUCCESS=false
-          
-          echo "Пытаемся применить ресурсы ESO..."
-          # Делаем до 10 попыток с интервалом в 10 секунд
-          for i in {1..10}; do
-            # Принудительно сбрасываем кэш kubectl перед каждой попыткой
-            rm -rf ~/.kube/cache
-            
-            if envsubst < k8s/external-secrets/eso-resources.yaml | kubectl apply -f -; then
-              echo "✅ Ресурсы ESO успешно применены!"
-              SUCCESS=true
-              break
-            fi
-            
-            echo "K3s еще не обновил схему API. Ждем 10 секунд (Попытка $i)..."
-            sleep 10
-          done
-          
-          # Если за 10 попыток не получилось — роняем пайплайн
-          if [ "$SUCCESS" = false ]; then
-            echo "❌ Ошибка: Не удалось применить ресурсы ESO."
-            exit 1
-          fi
-          
-          echo "Даем оператору 10 секунд на создание K8s Secrets из Lockbox..."
-          sleep 10
-
       - name: Deploy Application with Helm
         run: |
-          # Helm деплоит только нативные ресурсы (Deployment, Service и т.д.), поэтому никаких ошибок больше не будет!
           helm upgrade --install bulletin-board ./k8s/bulletin-board \
             --namespace bulletin-board \
             --set ingress.host="${{ vars.APP_DOMAIN }}" \
+            --set lockboxSecretId="${{ secrets.LOCKBOX_SECRET_ID }}" \
             --wait
 
       - name: Deploy Observability (Prometheus & Fluent Bit)
@@ -88,4 +57,6 @@ jobs:
           LOG_GROUP_ID: ${{ vars.LOG_GROUP_ID }}
         run: |
           make k8s-deploy-monitoring
+          # Даем ESO пару секунд на генерацию секрета из Lockbox для Fluent Bit
+          sleep 5
           make k8s-install-logging
