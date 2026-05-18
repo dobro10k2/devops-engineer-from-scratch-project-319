@@ -46,11 +46,32 @@ jobs:
         env:
           LOCKBOX_SECRET_ID: ${{ secrets.LOCKBOX_SECRET_ID }}
         run: |
-          # Применяем ресурсы оператора напрямую в кластер, минуя Helm
-          envsubst < k8s/external-secrets/eso-resources.yaml | kubectl apply -f -
+          # Флаг успешного выполнения
+          SUCCESS=false
           
-          # Даем оператору 10 секунд сходить в Yandex Lockbox и сгенерировать нативные K8s Secrets, 
-          # чтобы к моменту старта подов приложения секреты уже лежали в кластере.
+          echo "Пытаемся применить ресурсы ESO..."
+          # Делаем до 10 попыток с интервалом в 10 секунд
+          for i in {1..10}; do
+            # Принудительно сбрасываем кэш kubectl перед каждой попыткой
+            rm -rf ~/.kube/cache
+            
+            if envsubst < k8s/external-secrets/eso-resources.yaml | kubectl apply -f -; then
+              echo "✅ Ресурсы ESO успешно применены!"
+              SUCCESS=true
+              break
+            fi
+            
+            echo "K3s еще не обновил схему API. Ждем 10 секунд (Попытка $i)..."
+            sleep 10
+          done
+          
+          # Если за 10 попыток не получилось — роняем пайплайн
+          if [ "$SUCCESS" = false ]; then
+            echo "❌ Ошибка: Не удалось применить ресурсы ESO."
+            exit 1
+          fi
+          
+          echo "Даем оператору 10 секунд на создание K8s Secrets из Lockbox..."
           sleep 10
 
       - name: Deploy Application with Helm
