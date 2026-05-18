@@ -1,4 +1,4 @@
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/v1
 kind: SecretStore
 metadata:
   name: yandex-lockbox
@@ -11,7 +11,7 @@ spec:
           name: yc-auth
           key: authorized-key
 ---
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: app-secret-es
@@ -54,7 +54,7 @@ spec:
         key: "${LOCKBOX_SECRET_ID}"
         property: APP_SECRET
 ---
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: observability-secret-es
