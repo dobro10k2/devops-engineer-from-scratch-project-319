@@ -44,6 +44,10 @@ jobs:
 
       - name: Deploy Application with Helm
         run: |
+          # Принудительно сбрасываем локальный кэш API, чтобы Helm "увидел" новые CRD оператора
+          rm -rf ~/.kube/cache
+          rm -rf ~/.cache/helm
+
           helm upgrade --install bulletin-board ./k8s/bulletin-board \
             --namespace bulletin-board \
             --set ingress.host="${{ vars.APP_DOMAIN }}" \
