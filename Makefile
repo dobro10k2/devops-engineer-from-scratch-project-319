@@ -31,7 +31,8 @@ k8s-install-eso:
 	helm upgrade --install external-secrets external-secrets/external-secrets \
 	  --namespace external-secrets \
 	  --create-namespace \
-	  --set installCRDs=true
+	  --set installCRDs=true \
+	  --wait
 
 helm-deploy: k8s-namespace k8s-install-eso
 	helm upgrade --install bulletin-board ./k8s/bulletin-board \

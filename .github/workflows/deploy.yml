@@ -37,6 +37,9 @@ jobs:
             --dry-run=client -o yaml | kubectl apply -f -
           rm authorized-key.json
 
+      - name: Wait for CRDs to register
+        run: sleep 10
+
       - name: Deploy Application with Helm
         run: |
           helm upgrade --install bulletin-board ./k8s/bulletin-board \
