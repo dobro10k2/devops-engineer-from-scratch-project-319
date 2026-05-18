@@ -24,10 +24,6 @@ postgres:
       memory: "256Mi"
 
 ingress:
-  host: "example.com" # Будет переопределено в CI/CD
+  host: "" # Переопределяется в CI/CD через --set ingress.host
 
-secrets:
-  dbPassword: ""
-  awsAccessKeyId: ""
-  awsSecretAccessKey: ""
-  appSecret: ""
+lockboxSecretId: "" # Переопределяется в CI/CD через --set lockboxSecretId

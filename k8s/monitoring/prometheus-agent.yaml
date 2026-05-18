@@ -7,17 +7,15 @@ data:
   prometheus.yml: |
     global:
       scrape_interval: 15s
-    
-    # Отправка метрик в Managed Prometheus Yandex Cloud
+
     remote_write:
       - url: "https://monitoring.api.cloud.yandex.net/prometheus/workspaces/${WORKSPACE_ID}/api/v1/write"
-        bearer_token: "${OBSERVABILITY_API_KEY}"
+        bearer_token_file: "/etc/prometheus-secrets/api-key"
 
     scrape_configs:
       - job_name: 'spring-boot-app'
         metrics_path: '/actuator/prometheus'
         static_configs:
-          # Собираем метрики с сервиса по выделенному порту 9090
           - targets: ['bulletin-app.bulletin-board.svc.cluster.local:9090']
             labels:
               application: 'bulletin-board'
@@ -42,11 +40,17 @@ spec:
           image: prom/prometheus:v2.45.0
           args:
             - "--config.file=/etc/prometheus/prometheus.yml"
-            - "--enable-feature=agent" # Режим агента (экономит память кластера)
+            - "--enable-feature=agent"
           volumeMounts:
             - name: config-volume
               mountPath: /etc/prometheus
+            - name: secret-volume
+              mountPath: /etc/prometheus-secrets
+              readOnly: true
       volumes:
         - name: config-volume
           configMap:
             name: prometheus-config
+        - name: secret-volume
+          secret:
+            secretName: observability-secret

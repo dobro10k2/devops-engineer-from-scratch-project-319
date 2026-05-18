@@ -19,24 +19,42 @@ resource "yandex_lockbox_secret_version" "app_version" {
     key        = "DB_USER"
     text_value = "postgres"
   }
-
   entries {
     key        = "DB_PASSWORD"
     text_value = random_password.db_password.result
   }
-
   entries {
     key        = "S3_ACCESS_KEY"
     text_value = yandex_iam_service_account_static_access_key.storage_key.access_key
   }
-
   entries {
     key        = "S3_SECRET_KEY"
     text_value = yandex_iam_service_account_static_access_key.storage_key.secret_key
   }
-
   entries {
     key        = "APP_SECRET"
     text_value = random_password.app_secret.result
   }
+  entries {
+    key        = "OBSERVABILITY_API_KEY"
+    text_value = yandex_iam_service_account_api_key.observability_key.secret_key
+  }
+}
+
+# ==========================================
+# EXTERNAL SECRETS OPERATOR (ESO)
+# ==========================================
+resource "yandex_iam_service_account" "eso_sa" {
+  name        = "eso-service-account"
+  description = "SA for External Secrets Operator to read Lockbox"
+}
+
+resource "yandex_resourcemanager_folder_iam_member" "eso_lockbox_viewer" {
+  folder_id = var.folder_id
+  role      = "lockbox.payloadViewer"
+  member    = "serviceAccount:${yandex_iam_service_account.eso_sa.id}"
+}
+
+resource "yandex_iam_service_account_key" "eso_auth_key" {
+  service_account_id = yandex_iam_service_account.eso_sa.id
 }

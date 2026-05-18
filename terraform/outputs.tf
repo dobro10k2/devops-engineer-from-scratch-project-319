@@ -54,3 +54,15 @@ output "prometheus_console_url" {
   value       = "https://console.cloud.yandex.ru/folders/${var.folder_id}/monitoring/prometheus"
   description = "Yandex Managed Prometheus Console"
 }
+
+output "eso_sa_key_json" {
+  value = jsonencode({
+    id                 = yandex_iam_service_account_key.eso_auth_key.id
+    service_account_id = yandex_iam_service_account_key.eso_auth_key.service_account_id
+    created_at         = yandex_iam_service_account_key.eso_auth_key.created_at
+    key_algorithm      = yandex_iam_service_account_key.eso_auth_key.key_algorithm
+    public_key         = yandex_iam_service_account_key.eso_auth_key.public_key
+    private_key        = yandex_iam_service_account_key.eso_auth_key.private_key
+  })
+  sensitive = true
+}

@@ -25,22 +25,31 @@ jobs:
       - name: Create Namespace
         run: kubectl apply -f k8s/namespace.yaml
 
+      - name: Install External Secrets Operator
+        run: make k8s-install-eso
+
+      - name: Create Yandex Cloud Auth Secret for ESO
+        run: |
+          echo '${{ secrets.ESO_SA_KEY_JSON }}' > authorized-key.json
+          kubectl create secret generic yc-auth \
+            --from-file=authorized-key=authorized-key.json \
+            --namespace bulletin-board \
+            --dry-run=client -o yaml | kubectl apply -f -
+          rm authorized-key.json
+
       - name: Deploy Application with Helm
         run: |
           helm upgrade --install bulletin-board ./k8s/bulletin-board \
             --namespace bulletin-board \
-            --set ingress.host="${{ secrets.APP_DOMAIN }}" \
-            --set secrets.dbPassword="${{ secrets.DB_PASSWORD }}" \
-            --set secrets.awsAccessKeyId="${{ secrets.AWS_ACCESS_KEY_ID }}" \
-            --set secrets.awsSecretAccessKey="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
-            --set secrets.appSecret="${{ secrets.APP_SECRET }}" \
+            --set ingress.host="${{ vars.APP_DOMAIN }}" \
+            --set lockboxSecretId="${{ secrets.LOCKBOX_SECRET_ID }}" \
             --wait
 
       - name: Deploy Observability (Prometheus & Fluent Bit)
         env:
-          WORKSPACE_ID: ${{ secrets.WORKSPACE_ID }}
-          OBSERVABILITY_API_KEY: ${{ secrets.OBSERVABILITY_API_KEY }}
-          LOG_GROUP_ID: ${{ secrets.LOG_GROUP_ID }}
+          WORKSPACE_ID: ${{ vars.WORKSPACE_ID }}
+          LOG_GROUP_ID: ${{ vars.LOG_GROUP_ID }}
         run: |
           make k8s-deploy-monitoring
+          sleep 10
           make k8s-install-logging
