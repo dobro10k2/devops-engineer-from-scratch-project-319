@@ -41,23 +41,24 @@ jobs:
         run: |
           kubectl wait --for=condition=established --timeout=60s crd/externalsecrets.external-secrets.io
           kubectl wait --for=condition=established --timeout=60s crd/secretstores.external-secrets.io
+
+      - name: Deploy External Secrets Resources
+        env:
+          LOCKBOX_SECRET_ID: ${{ secrets.LOCKBOX_SECRET_ID }}
+        run: |
+          # Применяем ресурсы оператора напрямую в кластер, минуя Helm
+          envsubst < k8s/external-secrets/eso-resources.yaml | kubectl apply -f -
           
-          echo "CRD зарегистрированы! Ждем 15 секунд, пока K3s обновит OpenAPI-схему..."
-          sleep 15
-          
-          # Принудительно запрашиваем список ресурсов у API-сервера, чтобы обновить discovery-документы
-          kubectl api-resources > /dev/null
+          # Даем оператору 10 секунд сходить в Yandex Lockbox и сгенерировать нативные K8s Secrets, 
+          # чтобы к моменту старта подов приложения секреты уже лежали в кластере.
+          sleep 10
 
       - name: Deploy Application with Helm
         run: |
-          # Теперь удаляем кэш. Helm скачает уже ГАРАНТИРОВАННО свежую схему!
-          rm -rf ~/.kube/cache
-          rm -rf ~/.cache/helm
-
+          # Helm деплоит только нативные ресурсы (Deployment, Service и т.д.), поэтому никаких ошибок больше не будет!
           helm upgrade --install bulletin-board ./k8s/bulletin-board \
             --namespace bulletin-board \
             --set ingress.host="${{ vars.APP_DOMAIN }}" \
-            --set lockboxSecretId="${{ secrets.LOCKBOX_SECRET_ID }}" \
             --wait
 
       - name: Deploy Observability (Prometheus & Fluent Bit)
@@ -66,5 +67,4 @@ jobs:
           LOG_GROUP_ID: ${{ vars.LOG_GROUP_ID }}
         run: |
           make k8s-deploy-monitoring
-          sleep 10
           make k8s-install-logging

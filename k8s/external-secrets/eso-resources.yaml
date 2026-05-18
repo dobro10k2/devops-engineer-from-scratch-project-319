@@ -1,0 +1,74 @@
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: yandex-lockbox
+  namespace: bulletin-board
+spec:
+  provider:
+    yandexlockbox:
+      auth:
+        authorizedKeySecretRef:
+          name: yc-auth
+          key: authorized-key
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: app-secret-es
+  namespace: bulletin-board
+spec:
+  refreshInterval: 1m
+  secretStoreRef:
+    name: yandex-lockbox
+    kind: SecretStore
+  target:
+    name: app-secret
+    creationPolicy: Owner
+  data:
+    - secretKey: DB_USER
+      remoteRef:
+        key: "${LOCKBOX_SECRET_ID}"
+        property: DB_USER
+    - secretKey: DB_PASSWORD
+      remoteRef:
+        key: "${LOCKBOX_SECRET_ID}"
+        property: DB_PASSWORD
+    - secretKey: AWS_ACCESS_KEY_ID
+      remoteRef:
+        key: "${LOCKBOX_SECRET_ID}"
+        property: S3_ACCESS_KEY
+    - secretKey: AWS_SECRET_ACCESS_KEY
+      remoteRef:
+        key: "${LOCKBOX_SECRET_ID}"
+        property: S3_SECRET_KEY
+    - secretKey: S3_ACCESS_KEY
+      remoteRef:
+        key: "${LOCKBOX_SECRET_ID}"
+        property: S3_ACCESS_KEY
+    - secretKey: S3_SECRET_KEY
+      remoteRef:
+        key: "${LOCKBOX_SECRET_ID}"
+        property: S3_SECRET_KEY
+    - secretKey: APP_SECRET
+      remoteRef:
+        key: "${LOCKBOX_SECRET_ID}"
+        property: APP_SECRET
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: observability-secret-es
+  namespace: bulletin-board
+spec:
+  refreshInterval: 1m
+  secretStoreRef:
+    name: yandex-lockbox
+    kind: SecretStore
+  target:
+    name: observability-secret
+    creationPolicy: Owner
+  data:
+    - secretKey: api-key
+      remoteRef:
+        key: "${LOCKBOX_SECRET_ID}"
+        property: OBSERVABILITY_API_KEY
