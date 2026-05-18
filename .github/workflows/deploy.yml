@@ -41,10 +41,16 @@ jobs:
         run: |
           kubectl wait --for=condition=established --timeout=60s crd/externalsecrets.external-secrets.io
           kubectl wait --for=condition=established --timeout=60s crd/secretstores.external-secrets.io
+          
+          echo "CRD зарегистрированы! Ждем 15 секунд, пока K3s обновит OpenAPI-схему..."
+          sleep 15
+          
+          # Принудительно запрашиваем список ресурсов у API-сервера, чтобы обновить discovery-документы
+          kubectl api-resources > /dev/null
 
       - name: Deploy Application with Helm
         run: |
-          # Принудительно сбрасываем локальный кэш API, чтобы Helm "увидел" новые CRD оператора
+          # Теперь удаляем кэш. Helm скачает уже ГАРАНТИРОВАННО свежую схему!
           rm -rf ~/.kube/cache
           rm -rf ~/.cache/helm
 
