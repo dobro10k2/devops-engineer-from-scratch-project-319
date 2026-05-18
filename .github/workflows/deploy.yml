@@ -37,8 +37,10 @@ jobs:
             --dry-run=client -o yaml | kubectl apply -f -
           rm authorized-key.json
 
-      - name: Wait for CRDs to register
-        run: sleep 10
+      - name: Wait for ESO CRDs to be established
+        run: |
+          kubectl wait --for=condition=established --timeout=60s crd/externalsecrets.external-secrets.io
+          kubectl wait --for=condition=established --timeout=60s crd/secretstores.external-secrets.io
 
       - name: Deploy Application with Helm
         run: |
