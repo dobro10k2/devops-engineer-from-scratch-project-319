@@ -3,7 +3,7 @@
 
 # DevOps Engineer From Scratch — Bulletin Board on Kubernetes
 
-Production-ready infrastructure for the Spring Boot “Bulletin Board” application deployed in Yandex Cloud.
+Production-ready infrastructure for the Spring Boot "Bulletin Board" application deployed in Yandex Cloud.
 
 The project includes:
 
@@ -103,7 +103,7 @@ Infrastructure components:
 │   ├── storage.tf
 │   ├── variables.tf
 │   ├── versions.tf
-│   ├── terraform.tfvars
+│   ├── terraform.tfvars.example
 │   └── cloud-init/
 │       ├── master.yaml
 │       └── worker.yaml
@@ -129,11 +129,12 @@ Local environment:
 
 ---
 
-# Application Repository
+# Application
 
-Source application repository:
+🌐 **Live Website:** [http://bulletin.dobro10k2.ru/](http://bulletin.dobro10k2.ru/)
 
-:contentReference[oaicite:0]{index=0}
+Source application repository: 
+<https://github.com/dobro10k2/project-devops-deploy>
 
 Docker image:
 
@@ -267,8 +268,6 @@ Navigate to:
 Yandex Cloud Console → Lockbox
 ```
 
----
-
 ## 2. Create New Secret Version
 
 Update secret values such as:
@@ -279,8 +278,6 @@ Update secret values such as:
 
 Save the new version.
 
----
-
 ## 3. Verify Synchronization
 
 ```bash
@@ -288,8 +285,6 @@ kubectl describe secret app-secret -n bulletin-board
 ```
 
 ESO automatically synchronizes new values within 60 seconds.
-
----
 
 ## 4. Restart Application Pods
 
@@ -414,32 +409,362 @@ LOG_GROUP_ID
 
 # Monitoring Stack
 
+The project uses a hybrid observability architecture because the Kubernetes cluster is self-hosted K3s running on Yandex Cloud virtual machines rather than Yandex Managed Kubernetes.
+
 Monitoring components:
 
 - Prometheus Agent
 - Managed Prometheus
 - Spring Boot Actuator
 - Micrometer
+- Yandex Cloud Monitoring
+- Fluent Bit
+- Yandex Cloud Logging
 
-Metrics endpoint:
+---
+
+# Metrics Architecture
+
+The monitoring stack is divided into two separate layers:
+
+## 1. Infrastructure Metrics (Yandex Cloud Compute)
+
+Infrastructure-level metrics are automatically collected by Yandex Cloud for the underlying virtual machines hosting the K3s cluster.
+
+Collected metrics include:
+
+- CPU utilization
+- Memory utilization
+- Disk read/write activity
+- Disk errors
+- Network throughput
+
+These metrics are queried using Yandex Monitoring native queries such as:
+
+```text
+{folderId="<FOLDER_ID>",service="compute",name="cpu_utilization"}
+```
+
+## 2. Application Metrics (Prometheus Remote Write)
+
+Application-level metrics are exported by the Spring Boot application through:
 
 ```text
 /actuator/prometheus
 ```
 
-Prometheus Agent:
+The Prometheus Agent scrapes metrics from the application and forwards them to Managed Prometheus using Remote Write.
 
-- Scrapes application metrics
-- Uses Remote Write
-- Sends metrics to Yandex Monitoring
+Collected application metrics include:
 
-Authentication uses:
+- JVM memory usage
+- JVM CPU usage
+- HTTP request rate
+- HTTP 5xx error rate
+- Request latency
+- Application availability
 
-```text
-bearer_token_file
+Example PromQL queries:
+
+```promql
+sum(jvm_memory_used_bytes{application="bulletin-board"})
 ```
 
-instead of raw environment variables.
+```promql
+rate(http_server_requests_seconds_count{application="bulletin-board"}[1m])
+```
+
+```promql
+up{job="spring-boot-app"}
+```
+
+---
+
+# Kubernetes Metrics Limitation
+
+Because the project uses self-hosted K3s instead of Yandex Managed Kubernetes, native Kubernetes cluster metrics are not automatically exported into Yandex Monitoring.
+
+The project intentionally does not use:
+
+- kube-state-metrics
+- node-exporter
+- full Prometheus Operator stack
+
+Therefore, Kubernetes-specific Prometheus metrics such as:
+
+```promql
+kube_deployment_status_replicas_available
+```
+
+or
+
+```promql
+kube_pod_container_status_restarts_total
+```
+
+are not available in this architecture.
+
+Instead, the project focuses on:
+
+- Infrastructure observability
+- Application observability
+- Centralized logging
+- Availability monitoring
+- Performance monitoring
+
+This keeps the monitoring stack lightweight while still satisfying production monitoring requirements.
+
+---
+
+# Monitoring Dashboards
+
+## Infrastructure Dashboard
+
+Dashboard name:
+
+```text
+bulletin-board-infrastructure
+```
+
+Widgets:
+
+### CPU Utilization
+
+```text
+{folderId="<FOLDER_ID>",service="compute",name="cpu_utilization"}
+```
+
+### Memory Utilization
+
+```text
+{folderId="<FOLDER_ID>",service="compute",name="memory_utilization"}
+```
+
+### Disk Read Bytes
+
+```text
+{folderId="<FOLDER_ID>",service="compute",name="disk.read_bytes"}
+```
+
+### Disk Write Bytes
+
+```text
+{folderId="<FOLDER_ID>",service="compute",name="disk.write_bytes"}
+```
+
+### Disk Read Errors
+
+```text
+{folderId="<FOLDER_ID>",service="compute",name="disk.read_errors"}
+```
+
+### Network Received
+
+```text
+{folderId="<FOLDER_ID>",service="compute",name="network_received_bytes"}
+```
+
+### Network Sent
+
+```text
+{folderId="<FOLDER_ID>",service="compute",name="network_sent_bytes"}
+```
+
+---
+
+## Application Dashboard
+
+Dashboard name:
+
+```text
+bulletin-board-application
+```
+
+Widgets:
+
+### JVM Memory Usage
+
+```promql
+sum(jvm_memory_used_bytes{application="bulletin-board"})
+```
+
+### JVM CPU Usage
+
+```promql
+system_cpu_usage{application="bulletin-board"}
+```
+
+### HTTP Requests Rate
+
+```promql
+rate(http_server_requests_seconds_count{application="bulletin-board"}[1m])
+```
+
+### HTTP 5xx Error Rate
+
+```promql
+rate(http_server_requests_seconds_count{status=~"5..",application="bulletin-board"}[1m])
+```
+
+### Request Latency
+
+```promql
+rate(http_server_requests_seconds_sum{application="bulletin-board"}[1m])
+/
+rate(http_server_requests_seconds_count{application="bulletin-board"}[1m])
+```
+
+### Application Availability
+
+```promql
+up{job="spring-boot-app"}
+```
+
+---
+
+# Alert Policies
+
+The alerting layer monitors both infrastructure-level failures and application-level failures.
+
+---
+
+## High CPU Usage
+
+### Query
+
+```promql
+avg(system_cpu_usage{application="bulletin-board"}) > 0.8
+```
+
+### Parameters
+
+| Parameter | Value |
+|---|---|
+| Severity | WARNING |
+| Evaluation Window | 5m |
+| Threshold | 80% |
+| Repeat Interval | 15m |
+
+---
+
+## High Memory Usage
+
+### Query
+
+```promql
+sum(jvm_memory_used_bytes{application="bulletin-board"})
+/
+sum(jvm_memory_max_bytes{application="bulletin-board"})
+> 0.85
+```
+
+### Parameters
+
+| Parameter | Value |
+|---|---|
+| Severity | WARNING |
+| Evaluation Window | 5m |
+| Threshold | 85% |
+| Repeat Interval | 15m |
+
+---
+
+## High HTTP 5xx Error Rate
+
+### Query
+
+```promql
+rate(http_server_requests_seconds_count{status=~"5.."}[5m]) > 1
+```
+
+### Parameters
+
+| Parameter | Value |
+|---|---|
+| Severity | CRITICAL |
+| Evaluation Window | 5m |
+| Threshold | 1 req/sec |
+| Repeat Interval | 5m |
+
+---
+
+## High Request Latency
+
+### Query
+
+```promql
+(
+rate(http_server_requests_seconds_sum{application="bulletin-board"}[5m])
+/
+rate(http_server_requests_seconds_count{application="bulletin-board"}[5m])
+) > 1
+```
+
+### Parameters
+
+| Parameter | Value |
+|---|---|
+| Severity | WARNING |
+| Evaluation Window | 5m |
+| Threshold | 1 second |
+| Repeat Interval | 10m |
+
+---
+
+## Application Down
+
+### Query
+
+```promql
+up{job="spring-boot-app"} == 0
+```
+
+### Parameters
+
+| Parameter | Value |
+|---|---|
+| Severity | CRITICAL |
+| Evaluation Window | 2m |
+| Threshold | 0 |
+| Repeat Interval | 2m |
+
+---
+
+## Disk Read Errors
+
+### Query
+
+```text
+{folderId="<FOLDER_ID>",service="compute",name="disk.read_errors"}
+```
+
+### Parameters
+
+| Parameter | Value |
+|---|---|
+| Severity | WARNING |
+| Evaluation Window | 5m |
+| Threshold | > 0 |
+| Repeat Interval | 15m |
+
+---
+
+## Node CPU Saturation
+
+### Query
+
+```text
+{folderId="<FOLDER_ID>",service="compute",name="cpu_utilization"}
+```
+
+### Parameters
+
+| Parameter | Value |
+|---|---|
+| Severity | WARNING |
+| Evaluation Window | 10m |
+| Threshold | 90% |
+| Repeat Interval | 15m |
 
 ---
 
@@ -528,330 +853,6 @@ http://YOUR_DOMAIN
 
 ---
 
-# Infrastructure Dashboard
-
-Dashboard name:
-
-```text
-bulletin-board-infrastructure
-```
-
----
-
-## CPU Utilization
-
-```text
-{folderId="<FOLDER_ID>",service="compute",name="cpu_utilization"}
-```
-
----
-
-## Memory Utilization
-
-```text
-{folderId="<FOLDER_ID>",service="compute",name="memory_utilization"}
-```
-
----
-
-## Disk Read Bytes
-
-```text
-{folderId="<FOLDER_ID>",service="compute",name="disk.read_bytes"}
-```
-
----
-
-## Disk Write Bytes
-
-```text
-{folderId="<FOLDER_ID>",service="compute",name="disk.write_bytes"}
-```
-
----
-
-## Disk Read Errors
-
-```text
-{folderId="<FOLDER_ID>",service="compute",name="disk.read_errors"}
-```
-
----
-
-## Network Received
-
-```text
-{folderId="<FOLDER_ID>",service="compute",name="network_received_bytes"}
-```
-
----
-
-## Network Sent
-
-```text
-{folderId="<FOLDER_ID>",service="compute",name="network_sent_bytes"}
-```
-
----
-
-# Application Dashboard
-
-Dashboard name:
-
-```text
-bulletin-board-application
-```
-
----
-
-## JVM Memory Usage
-
-```promql
-sum(jvm_memory_used_bytes{application="bulletin-board"})
-```
-
----
-
-## JVM CPU Usage
-
-```promql
-system_cpu_usage{application="bulletin-board"}
-```
-
----
-
-## HTTP Requests Rate
-
-```promql
-rate(http_server_requests_seconds_count{application="bulletin-board"}[1m])
-```
-
----
-
-## HTTP 5xx Error Rate
-
-```promql
-rate(http_server_requests_seconds_count{status=~"5..",application="bulletin-board"}[1m])
-```
-
----
-
-## Request Latency
-
-```promql
-rate(http_server_requests_seconds_sum{application="bulletin-board"}[1m])
-/
-rate(http_server_requests_seconds_count{application="bulletin-board"}[1m])
-```
-
----
-
-## Active Pods
-
-```promql
-kube_deployment_status_replicas_available{deployment="bulletin-app"}
-```
-
----
-
-## Pod Restarts
-
-```promql
-increase(kube_pod_container_status_restarts_total[15m])
-```
-
----
-
-## Application Availability
-
-```promql
-up{job="spring-boot-app"}
-```
-
----
-
-# Alert Policies
-
----
-
-## High CPU Usage
-
-### Query
-
-```promql
-avg(system_cpu_usage{application="bulletin-board"}) > 0.8
-```
-
-### Parameters
-
-| Parameter | Value |
-|---|---|
-| Severity | WARNING |
-| Evaluation Window | 5m |
-| Threshold | 80% |
-| Repeat Interval | 15m |
-
----
-
-## High Memory Usage
-
-### Query
-
-```promql
-sum(jvm_memory_used_bytes{application="bulletin-board"})
-/
-sum(jvm_memory_max_bytes{application="bulletin-board"})
-> 0.85
-```
-
-### Parameters
-
-| Parameter | Value |
-|---|---|
-| Severity | WARNING |
-| Evaluation Window | 5m |
-| Threshold | 85% |
-| Repeat Interval | 15m |
-
----
-
-## Pod Restart Spike
-
-### Query
-
-```promql
-increase(kube_pod_container_status_restarts_total[10m]) > 3
-```
-
-### Parameters
-
-| Parameter | Value |
-|---|---|
-| Severity | CRITICAL |
-| Evaluation Window | 10m |
-| Threshold | 3 restarts |
-| Repeat Interval | 10m |
-
----
-
-## High HTTP 5xx Error Rate
-
-### Query
-
-```promql
-rate(http_server_requests_seconds_count{status=~"5.."}[5m]) > 1
-```
-
-### Parameters
-
-| Parameter | Value |
-|---|---|
-| Severity | CRITICAL |
-| Evaluation Window | 5m |
-| Threshold | 1 req/sec |
-| Repeat Interval | 5m |
-
----
-
-## High Request Latency
-
-### Query
-
-```promql
-(
-rate(http_server_requests_seconds_sum{application="bulletin-board"}[5m])
-/
-rate(http_server_requests_seconds_count{application="bulletin-board"}[5m])
-) > 1
-```
-
-### Parameters
-
-| Parameter | Value |
-|---|---|
-| Severity | WARNING |
-| Evaluation Window | 5m |
-| Threshold | 1 second |
-| Repeat Interval | 10m |
-
----
-
-## Application Down
-
-### Query
-
-```promql
-up{job="spring-boot-app"} == 0
-```
-
-### Parameters
-
-| Parameter | Value |
-|---|---|
-| Severity | CRITICAL |
-| Evaluation Window | 2m |
-| Threshold | 0 |
-| Repeat Interval | 2m |
-
----
-
-## No Active Pods
-
-### Query
-
-```promql
-kube_deployment_status_replicas_available{deployment="bulletin-app"} < 1
-```
-
-### Parameters
-
-| Parameter | Value |
-|---|---|
-| Severity | CRITICAL |
-| Evaluation Window | 2m |
-| Threshold | 1 |
-| Repeat Interval | 5m |
-
----
-
-## Disk Read Errors
-
-### Query
-
-```text
-{folderId="<FOLDER_ID>",service="compute",name="disk.read_errors"}
-```
-
-### Parameters
-
-| Parameter | Value |
-|---|---|
-| Severity | WARNING |
-| Evaluation Window | 5m |
-| Threshold | > 0 |
-| Repeat Interval | 15m |
-
----
-
-## Node CPU Saturation
-
-### Query
-
-```text
-{folderId="<FOLDER_ID>",service="compute",name="cpu_utilization"}
-```
-
-### Parameters
-
-| Parameter | Value |
-|---|---|
-| Severity | WARNING |
-| Evaluation Window | 10m |
-| Threshold | 90% |
-| Repeat Interval | 15m |
-
----
-
 # Makefile Reference
 
 | Command | Description |
@@ -874,16 +875,40 @@ kube_deployment_status_replicas_available{deployment="bulletin-app"} < 1
 
 # Recommended Screenshots for Submission
 
-1. Infrastructure dashboard
-2. Application dashboard
-3. Alert policies
-4. Cloud Logging logs
-5. `kubectl get pods`
-6. `kubectl get ingress`
-7. Rolling update process
-8. External Secret synchronization
-9. HPA status
-10. Pod distribution across nodes
+## Infrastructure
+
+1. Yandex Cloud VM instances
+2. `kubectl get nodes -o wide`
+3. `kubectl get pods -n bulletin-board -o wide`
+4. Pod distribution across worker nodes
+5. HPA status
+6. Ingress status
+
+---
+
+## Secrets Management
+
+7. `kubectl get externalsecret -n bulletin-board`
+8. `kubectl describe externalsecret app-secret-es -n bulletin-board`
+9. `kubectl get secretstore -n bulletin-board`
+10. Lockbox secret versions page
+
+---
+
+## Monitoring & Logging
+
+11. Infrastructure dashboard
+12. Application dashboard
+13. Alert policies
+14. Cloud Logging logs
+
+---
+
+## CI/CD
+
+15. Successful GitHub Actions deployment pipeline
+16. Rolling update process
+17. Application running in browser
 
 ---
 
