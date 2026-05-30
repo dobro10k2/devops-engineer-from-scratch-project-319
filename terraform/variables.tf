@@ -26,5 +26,5 @@ variable "bucket_name" {
 }
 
 variable "prometheus_workspace_id" {
-  type        = string
+  type = string
 }

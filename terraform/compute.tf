@@ -32,7 +32,7 @@ resource "yandex_compute_instance" "master" {
   }
 
   metadata = {
-    ssh-keys  = "ubuntu:${var.ssh_public_key}"
+    ssh-keys = "ubuntu:${var.ssh_public_key}"
     user-data = templatefile("${path.module}/cloud-init/master.yaml", {
       k3s_token = random_password.k3s_token.result
     })
@@ -65,7 +65,7 @@ resource "yandex_compute_instance" "worker" {
   }
 
   metadata = {
-    ssh-keys  = "ubuntu:${var.ssh_public_key}"
+    ssh-keys = "ubuntu:${var.ssh_public_key}"
     user-data = templatefile("${path.module}/cloud-init/worker.yaml", {
       k3s_token      = random_password.k3s_token.result
       master_priv_ip = yandex_compute_instance.master.network_interface[0].ip_address

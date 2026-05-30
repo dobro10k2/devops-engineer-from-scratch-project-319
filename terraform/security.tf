@@ -1,5 +1,5 @@
 resource "yandex_vpc_security_group" "k8s" {
-  name        = "k8s-security-group"
+  name       = "k8s-security-group"
   network_id = yandex_vpc_network.main.id
 
   ingress {
