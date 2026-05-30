@@ -1,5 +1,6 @@
 ### Hexlet tests and linter status:
 [![Actions Status](https://github.com/dobro10k2/devops-engineer-from-scratch-project-319/actions/workflows/hexlet-check.yml/badge.svg)](https://github.com/dobro10k2/devops-engineer-from-scratch-project-319/actions)
+[![Actions Status](https://github.com/dobro10k2/devops-engineer-from-scratch-project-319/actions/workflows/deploy.yml/badge.svg)](https://github.com/dobro10k2/devops-engineer-from-scratch-project-319/actions)
 
 # DevOps Engineer From Scratch — Bulletin Board on Kubernetes
 
@@ -133,7 +134,7 @@ Local environment:
 
 🌐 **Live Website:** [http://bulletin.dobro10k2.ru/](http://bulletin.dobro10k2.ru/)
 
-Source application repository: 
+Source application repository:
 <https://github.com/dobro10k2/project-devops-deploy>
 
 Docker image:
@@ -873,42 +874,29 @@ http://YOUR_DOMAIN
 
 ---
 
-# Recommended Screenshots for Submission
+# Screenshots for Submission
 
 ## Infrastructure
 
-1. Yandex Cloud VM instances
-2. `kubectl get nodes -o wide`
-3. `kubectl get pods -n bulletin-board -o wide`
-4. Pod distribution across worker nodes
-5. HPA status
-6. Ingress status
+![yc_infrastructure](img/yc_infrastructure.png)
+![k3s_infrastructure](img/k3s_infrastructure.png)
+![working_app](img/working_app.png)
 
 ---
 
 ## Secrets Management
 
-7. `kubectl get externalsecret -n bulletin-board`
-8. `kubectl describe externalsecret app-secret-es -n bulletin-board`
-9. `kubectl get secretstore -n bulletin-board`
-10. Lockbox secret versions page
+![k3s_secret](img/k3s_secret.png)
+![k3s_secret2](img/k3s_secret2.png)
 
 ---
 
 ## Monitoring & Logging
 
-11. Infrastructure dashboard
-12. Application dashboard
-13. Alert policies
-14. Cloud Logging logs
-
----
-
-## CI/CD
-
-15. Successful GitHub Actions deployment pipeline
-16. Rolling update process
-17. Application running in browser
+![alert_dashboard](img/alert_dashboard.png)
+![application_dashboard](img/application_dashboard2.png)
+![infrastructure_dashboard](img/infrastructure_dashboard.png)
+![alert_policies](img/alert_policies.png)
 
 ---
 
@@ -927,3 +915,4 @@ This project demonstrates a production-ready DevOps platform implementation incl
 - Observability
 - Automated secret rotation
 - Production-grade operational practices
+
